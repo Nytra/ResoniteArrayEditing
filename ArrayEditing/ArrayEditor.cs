@@ -3,7 +3,6 @@ using EnumerableToolkit;
 using FrooxEngine;
 using FrooxEngine.UIX;
 using HarmonyLib;
-using MonkeyLoader.Patching;
 using MonkeyLoader.Resonite;
 using MonkeyLoader.Resonite.UI.Inspectors;
 using System;
@@ -20,11 +19,14 @@ namespace ArrayEditing
         private static readonly MethodInfo _addLinearValueProxying = AccessTools.Method(typeof(ArrayEditor), nameof(AddLinearValueProxying));
         private static readonly MethodInfo _addListReferenceProxying = AccessTools.Method(typeof(ArrayEditor), nameof(AddListReferenceProxying));
         private static readonly MethodInfo _addListValueProxying = AccessTools.Method(typeof(ArrayEditor), nameof(AddListValueProxying));
+
         private static readonly Type _iWorldElementType = typeof(IWorldElement);
 
-        private static readonly MethodInfo _setLinearPoint = AccessTools.Method(typeof(ArrayEditor), nameof(SetLinearPoint));
         private static readonly MethodInfo _setCurvePoint = AccessTools.Method(typeof(ArrayEditor), nameof(SetCurvePoint));
+        private static readonly MethodInfo _setLinearPoint = AccessTools.Method(typeof(ArrayEditor), nameof(SetLinearPoint));
 
+        // Todo: probably unlikely, but using a single field for this could lead
+        // to trouble if worlds ever start to be updated concurrently.
         private static bool _skipListChanges = false;
 
         public override bool CanBeDisabled => true;
@@ -33,12 +35,8 @@ namespace ArrayEditing
 
         public override bool SkipCanceled => true;
 
-        protected override bool AppliesTo(BuildArrayEditorEvent eventData) => Enabled;
-
-        protected override IEnumerable<IFeaturePatch> GetFeaturePatches() => [];
-
         protected override void Handle(BuildArrayEditorEvent eventData)
-            => eventData.Canceled = BuildArray(eventData.Member, eventData.Name, eventData.FieldInfo, eventData.UI, eventData.LabelSize!.Value);
+            => eventData.Canceled = BuildArray(eventData.Member, eventData.Name, eventData.UI, eventData.LabelSize!.Value);
 
         private static void AddCurveValueProxying<T>(SyncArray<CurveKey<T>> array, SyncElementList<ValueGradientDriver<T>.Point> list)
             where T : IEquatable<T>
@@ -63,14 +61,18 @@ namespace ArrayEditing
                     array.Insert(buffer, startIndex);
                     array.Changed += ArrayChanged;
                 }
-                
+
                 AddUpdateProxies(array, list, addedElements);
             };
 
             list.ElementsRemoved += (list, startIndex, count) =>
             {
-                if (_skipListChanges) return;
-                if (array.Count < startIndex + count) return;
+                if (_skipListChanges)
+                    return;
+
+                if (array.Count < startIndex + count)
+                    return;
+
                 array.Changed -= ArrayChanged;
                 array.Remove(startIndex, count);
                 array.Changed += ArrayChanged;
@@ -100,13 +102,18 @@ namespace ArrayEditing
                     array.Insert(buffer, startIndex);
                     array.Changed += ArrayChanged;
                 }
+
                 AddUpdateProxies(array, list, addedElements);
             };
 
             list.ElementsRemoved += (list, startIndex, count) =>
             {
-                if (_skipListChanges) return;
-                if (array.Count < startIndex + count) return;
+                if (_skipListChanges)
+                    return;
+
+                if (array.Count < startIndex + count)
+                    return;
+
                 array.Changed -= ArrayChanged;
                 array.Remove(startIndex, count);
                 array.Changed += ArrayChanged;
@@ -135,13 +142,18 @@ namespace ArrayEditing
                     array.Insert(buffer, startIndex);
                     array.Changed += ArrayChanged;
                 }
+
                 AddUpdateProxies(array, list, addedElements);
             };
 
             list.ElementsRemoved += (list, startIndex, count) =>
             {
-                if (_skipListChanges) return;
-                if (array.Count < startIndex + count) return;
+                if (_skipListChanges)
+                    return;
+
+                if (array.Count < startIndex + count)
+                    return;
+
                 array.Changed -= ArrayChanged;
                 array.Remove(startIndex, count);
                 array.Changed += ArrayChanged;
@@ -170,13 +182,18 @@ namespace ArrayEditing
                     array.Insert(buffer, startIndex);
                     array.Changed += ArrayChanged;
                 }
+
                 AddUpdateProxies(array, list, addedElements);
             };
 
             list.ElementsRemoved += (list, startIndex, count) =>
             {
-                if (_skipListChanges) return;
-                if (array.Count < startIndex + count) return;
+                if (_skipListChanges)
+                    return;
+
+                if (array.Count < startIndex + count)
+                    return;
+
                 array.Changed -= ArrayChanged;
                 array.Remove(startIndex, count);
                 array.Changed += ArrayChanged;
@@ -205,13 +222,18 @@ namespace ArrayEditing
                     array.Insert(buffer, startIndex);
                     array.Changed += ArrayChanged;
                 }
+
                 AddUpdateProxies(array, list, addedElements);
             };
 
             list.ElementsRemoved += (list, startIndex, count) =>
             {
-                if (_skipListChanges) return;
-                if (array.Count < startIndex + count) return;
+                if (_skipListChanges)
+                    return;
+
+                if (array.Count < startIndex + count)
+                    return;
+
                 array.Changed -= ArrayChanged;
                 array.Remove(startIndex, count);
                 array.Changed += ArrayChanged;
@@ -220,14 +242,17 @@ namespace ArrayEditing
 
         private static void AddUpdateProxies<T>(SyncArray<LinearKey<T>> array,
             SyncElementList<ValueGradientDriver<T>.Point> list, IEnumerable<ValueGradientDriver<T>.Point> elements)
-                    where T : IEquatable<T>
+                where T : IEquatable<T>
         {
             foreach (var point in elements)
             {
                 point.Changed += syncObject =>
                 {
-                    if (_skipListChanges) return;
+                    if (_skipListChanges)
+                        return;
+
                     var index = list.IndexOfElement(point);
+
                     array.Changed -= ArrayChanged;
                     array[index] = new LinearKey<T>(point.Position, point.Value);
                     array.Changed += ArrayChanged;
@@ -236,14 +261,17 @@ namespace ArrayEditing
         }
 
         private static void AddUpdateProxies<T>(SyncArray<T> array, SyncElementList<Sync<T>> list, IEnumerable<Sync<T>> elements)
-                    where T : IEquatable<T>
+            where T : IEquatable<T>
         {
             foreach (var sync in elements)
             {
                 sync.OnValueChange += field =>
                 {
-                    if (_skipListChanges) return;
+                    if (_skipListChanges)
+                        return;
+
                     var index = list.IndexOfElement(sync);
+
                     array.Changed -= ArrayChanged;
                     array[index] = sync.Value;
                     array.Changed += ArrayChanged;
@@ -258,8 +286,11 @@ namespace ArrayEditing
             {
                 sync.OnValueChange += field =>
                 {
-                    if (_skipListChanges) return;
+                    if (_skipListChanges)
+                        return;
+
                     var index = list.IndexOfElement(sync);
+
                     array.Changed -= ArrayChanged;
                     array[index] = sync.Target;
                     array.Changed += ArrayChanged;
@@ -273,9 +304,12 @@ namespace ArrayEditing
             {
                 point.Changed += field =>
                 {
-                    if (_skipListChanges) return;
+                    if (_skipListChanges)
+                        return;
+
                     var index = list.IndexOfElement(point);
                     var tubePoint = new TubePoint(point.Value.Value, point.Position.Value);
+
                     array.Changed -= ArrayChanged;
                     array[index] = tubePoint;
                     array.Changed += ArrayChanged;
@@ -285,14 +319,17 @@ namespace ArrayEditing
 
         private static void AddUpdateProxies<T>(SyncArray<CurveKey<T>> array,
             SyncElementList<ValueGradientDriver<T>.Point> list, IEnumerable<ValueGradientDriver<T>.Point> elements)
-                    where T : IEquatable<T>
+                where T : IEquatable<T>
         {
             foreach (var point in elements)
             {
                 point.Changed += syncObject =>
                 {
-                    if (_skipListChanges) return;
+                    if (_skipListChanges)
+                        return;
+
                     var index = list.IndexOfElement(point);
+
                     array.Changed -= ArrayChanged;
                     array[index] = new CurveKey<T>(point.Position, point.Value, array[index].leftTangent, array[index].rightTangent);
                     array.Changed += ArrayChanged;
@@ -300,34 +337,105 @@ namespace ArrayEditing
             }
         }
 
-        private static bool BuildArray(ISyncArray array, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize)
+        private static void ArrayChanged(IChangeable changeable)
+        {
+            var array = (ISyncArray)changeable;
+
+            if (array.IsDriven)
+            {
+                array.Changed -= ArrayChanged;
+                return;
+            }
+
+            var proxySlotName = $"{array.Name}-{array.ReferenceID}-Proxy";
+            var proxiesSlot = array.World.AssetsSlot;
+
+            if (proxiesSlot.FindChild(proxySlotName) is Slot proxySlot)
+            {
+                foreach (var comp in proxySlot.Components)
+                {
+                    var list = (ISyncList)comp.GetSyncMember("Values");
+                    _skipListChanges = true;
+
+                    list.World.RunSynchronously(() => _skipListChanges = false);
+                    list.EnsureExactElementCount(array.Count);
+
+                    if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ValueMultiplexer<>))
+                    {
+                        for (var i = 0; i < array.Count; ++i)
+                            ((IField)list.GetElement(i)).BoxedValue = array.GetElement(i);
+                    }
+                    else if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ReferenceMultiplexer<>))
+                    {
+                        for (var i = 0; i < array.Count; ++i)
+                            ((ISyncRef)list.GetElement(i)).Target = (IWorldElement)array.GetElement(i);
+                    }
+                    else if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ValueGradientDriver<>))
+                    {
+                        var isSyncLinear = TryGetGenericParameters(typeof(SyncLinear<>), array.GetType(), out var syncLinearGenericParameters);
+                        var syncLinearType = syncLinearGenericParameters?.First();
+
+                        var isSyncCurve = TryGetGenericParameters(typeof(SyncCurve<>), array.GetType(), out var syncCurveGenericParameters);
+                        var syncCurveType = syncCurveGenericParameters?.First();
+
+                        if (!TryGetGenericParameters(typeof(SyncArray<>), array.GetType(), out var genericParameters))
+                            return;
+
+                        var arrayType = genericParameters.Value.First();
+
+                        for (var i = 0; i < array.Count; ++i)
+                        {
+                            var elem = list.GetElement(i);
+
+                            if (isSyncLinear && SupportsLerp(syncLinearType!))
+                            {
+                                _setLinearPoint.MakeGenericMethod(syncLinearType).Invoke(null, [elem, array.GetElement(i)]);
+                            }
+                            else if (isSyncCurve && SupportsLerp(syncCurveType!))
+                            {
+                                _setCurvePoint.MakeGenericMethod(syncCurveType).Invoke(null, [elem, array.GetElement(i)]);
+                            }
+                            else
+                            {
+                                if (arrayType == typeof(TubePoint))
+                                    SetTubePoint((ValueGradientDriver<float3>.Point)elem!, (TubePoint)array.GetElement(i));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool BuildArray(ISyncArray array, string name, UIBuilder ui, float labelSize)
         {
             if (!TryGetGenericParameters(typeof(SyncArray<>), array.GetType(), out var genericParameters))
                 return false;
 
             var isSyncLinear = TryGetGenericParameters(typeof(SyncLinear<>), array.GetType(), out var syncLinearGenericParameters);
+            var syncLinearType = syncLinearGenericParameters?.First();
 
             var isSyncCurve = TryGetGenericParameters(typeof(SyncCurve<>), array.GetType(), out var syncCurveGenericParameters);
+            var syncCurveType = syncCurveGenericParameters?.First();
 
             var arrayType = genericParameters!.Value.First();
-            var syncLinearType = syncLinearGenericParameters?.First();
-            var syncCurveType = syncCurveGenericParameters?.First();
 
             var proxySlotName = $"{name}-{array.ReferenceID}-Proxy";
             var proxiesSlot = ui.World.AssetsSlot;
             var newProxy = false;
+
             if (proxiesSlot.FindChild(proxySlotName) is not Slot proxySlot)
             {
                 proxySlot = proxiesSlot.AddSlot(proxySlotName);
-                array.FindNearestParent<IDestroyable>().Destroyed += (IDestroyable _) => proxySlot.Destroy();
+                array.FindNearestParent<IDestroyable>().Destroyed += _ => proxySlot.Destroy();
                 newProxy = true;
             }
+
             proxySlot.DestroyWhenLocalUserLeaves();
 
             ISyncList list;
             FieldInfo listField;
 
-            if (isSyncLinear && SupportsLerp(syncLinearType!))
+            if (isSyncLinear && SupportsLerp(syncLinearType))
             {
                 var gradientType = typeof(ValueGradientDriver<>).MakeGenericType(syncLinearType);
                 var gradient = GetOrAttachComponent(proxySlot, gradientType, out var attachedNew);
@@ -336,11 +444,9 @@ namespace ArrayEditing
                 listField = gradient.GetSyncMemberFieldInfo(nameof(ValueGradientDriver<float>.Points));
 
                 if (attachedNew)
-                {
                     _addLinearValueProxying.MakeGenericMethod(syncLinearType).Invoke(null, [array, list]);
-                }
             }
-            else if (isSyncCurve && SupportsLerp(syncCurveType!))
+            else if (isSyncCurve && SupportsLerp(syncCurveType))
             {
                 var gradientType = typeof(ValueGradientDriver<>).MakeGenericType(syncCurveType);
                 var gradient = GetOrAttachComponent(proxySlot, gradientType, out var attachedNew);
@@ -349,12 +455,12 @@ namespace ArrayEditing
                 listField = gradient.GetSyncMemberFieldInfo(nameof(ValueGradientDriver<float>.Points));
 
                 if (attachedNew)
-                {
                     _addCurveValueProxying.MakeGenericMethod(syncCurveType).Invoke(null, [array, list]);
-                }
             }
             else
             {
+                // Todo: we should probably add caching to all these MakeGenericMethod calls
+
                 if (arrayType == typeof(TubePoint))
                 {
                     var gradient = GetOrAttachComponent(proxySlot, typeof(ValueGradientDriver<float3>), out var attachedNew);
@@ -363,14 +469,13 @@ namespace ArrayEditing
                     listField = gradient.GetSyncMemberFieldInfo(nameof(ValueGradientDriver<float3>.Points));
 
                     if (attachedNew)
-                    {
                         AddTubePointProxying((SyncArray<TubePoint>)array, (SyncElementList<ValueGradientDriver<float3>.Point>)list);
-                    }
                 }
                 else if (Coder.IsEnginePrimitive(arrayType))
                 {
                     var multiplexerType = typeof(ValueMultiplexer<>).MakeGenericType(arrayType);
                     var multiplexer = GetOrAttachComponent(proxySlot, multiplexerType, out var attachedNew);
+
                     list = (ISyncList)multiplexer.GetSyncMember(nameof(ValueMultiplexer<float>.Values));
                     listField = multiplexer.GetSyncMemberFieldInfo(nameof(ValueMultiplexer<float>.Values));
 
@@ -381,6 +486,7 @@ namespace ArrayEditing
                 {
                     var multiplexerType = typeof(ReferenceMultiplexer<>).MakeGenericType(arrayType);
                     var multiplexer = GetOrAttachComponent(proxySlot, multiplexerType, out var attachedNew);
+
                     list = (ISyncList)multiplexer.GetSyncMember(nameof(ReferenceMultiplexer<Slot>.References));
                     listField = multiplexer.GetSyncMemberFieldInfo(nameof(ReferenceMultiplexer<Slot>.References));
 
@@ -405,35 +511,38 @@ namespace ArrayEditing
                 listSlot.DestroyWhenLocalUserLeaves();
 
                 ClearRefs(listSlot);
-                list.Changed += (IChangeable change) => 
-                { 
-                    ClearRefs(listSlot);
-                };
+                list.Changed += _ => ClearRefs(listSlot);
+
                 void ClearRefs(Slot listSlot)
                 {
-                    listSlot.FilterWorldElement()?.World.RunInUpdates(3, () => 
+                    listSlot.FilterWorldElement()?.World.RunInUpdates(3, () =>
                     {
-                        if (listSlot.FilterWorldElement() is null) return;
+                        if (listSlot.FilterWorldElement() is null)
+                            return;
+
                         foreach (var refProxySource in listSlot.GetComponentsInChildren<ReferenceProxySource>())
-                        {
-                            refProxySource.Reference.Target = null;
-                        }
+                            refProxySource.Reference.Target = null!;
                     });
                 }
+
                 void ArrayDriveCheck(IChangeable changeable)
                 {
                     if (((ISyncArray)changeable).IsDriven)
                     {
                         listSlot.DestroyChildren();
-                        listSlot.Components.ToArray().Do((Component c) => c.Destroy());
+                        listSlot.Components.ToArray().Do(c => c.Destroy());
                         listSlot.AttachComponent<LayoutElement>().MinHeight.Value = 24f;
+
                         var newUi = new UIBuilder(listSlot, listSlot);
                         RadiantUI_Constants.SetupEditorStyle(newUi);
+
                         newUi.Text("(array is driven)");
+
                         proxySlot?.Destroy();
                         array.Changed -= ArrayDriveCheck;
                     }
                 }
+
                 array.Changed += ArrayDriveCheck;
             }
             else
@@ -443,110 +552,9 @@ namespace ArrayEditing
             }
 
             if (newProxy)
-            {
                 array.Changed += ArrayChanged;
-            }
 
             return true;
-        }
-
-        static void SetLinearPoint<T>(ValueGradientDriver<T>.Point point, LinearKey<T> arrayElem) where T : IEquatable<T>
-        {
-            point.Position.Value = arrayElem.time;
-            point.Value.Value = arrayElem.value;
-        }
-
-        static void SetCurvePoint<T>(ValueGradientDriver<T>.Point point, CurveKey<T> arrayElem) where T : IEquatable<T>
-        {
-            point.Position.Value = arrayElem.time;
-            point.Value.Value = arrayElem.value;
-        }
-
-        static void SetTubePoint(ValueGradientDriver<float3>.Point point, TubePoint arrayElem)
-        {
-            point.Position.Value = arrayElem.radius;
-            point.Value.Value = arrayElem.position;
-        }
-
-        static void ArrayChanged(IChangeable changeable)
-        {
-            var array = (ISyncArray)changeable;
-
-            if (array.IsDriven)
-            {
-                array.Changed -= ArrayChanged;
-                return;
-            }
-
-            var proxySlotName = $"{array.Name}-{array.ReferenceID}-Proxy";
-            var proxiesSlot = array.World.AssetsSlot;
-            if (proxiesSlot.FindChild(proxySlotName) is Slot proxySlot)
-            {
-                ISyncList? list = null;
-                foreach (var comp in proxySlot.Components)
-                {
-                    if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ValueMultiplexer<>))
-                    {
-                        list = comp.GetSyncMember("Values") as ISyncList;
-                        _skipListChanges = true;
-                        list.World.RunSynchronously(() => _skipListChanges = false);
-                        list.EnsureExactElementCount(array.Count);
-                        for (int i = 0; i < array.Count; i++)
-                        {
-                            ((IField)list.GetElement(i)).BoxedValue = array.GetElement(i);
-                        }
-                    }
-                    else if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ReferenceMultiplexer<>))
-                    {
-                        list = comp.GetSyncMember("References") as ISyncList;
-                        _skipListChanges = true;
-                        list.World.RunSynchronously(() => _skipListChanges = false);
-                        list.EnsureExactElementCount(array.Count);
-                        for (int i = 0; i < array.Count; i++)
-                        {
-                            ((ISyncRef)list.GetElement(i)).Target = (IWorldElement)array.GetElement(i);
-                        }
-                    }
-                    else if (comp.GetType().IsGenericType && comp.GetType().GetGenericTypeDefinition() == typeof(ValueGradientDriver<>))
-                    {
-                        list = comp.GetSyncMember("Points") as ISyncList;
-                        _skipListChanges = true;
-                        list.World.RunSynchronously(() => _skipListChanges = false);
-                        list.EnsureExactElementCount(array.Count);
-
-                        var isSyncLinear = TryGetGenericParameters(typeof(SyncLinear<>), array.GetType(), out var syncLinearGenericParameters);
-                        var isSyncCurve = TryGetGenericParameters(typeof(SyncCurve<>), array.GetType(), out var syncCurveGenericParameters);
-                        var syncLinearType = syncLinearGenericParameters?.First();
-                        var syncCurveType = syncCurveGenericParameters?.First();
-
-                        if (!TryGetGenericParameters(typeof(SyncArray<>), array.GetType(), out var genericParameters))
-                            return;
-
-                        var arrayType = genericParameters!.Value.First();
-
-                        for (int i = 0; i < array.Count; i++)
-                        {
-                            var elem = list.GetElement(i);
-
-                            if (isSyncLinear && SupportsLerp(syncLinearType!))
-                            {
-                                _setLinearPoint.MakeGenericMethod(syncLinearType).Invoke(null, [elem, array.GetElement(i)]);
-                            }
-                            else if (isSyncCurve && SupportsLerp(syncCurveType!))
-                            {
-                                _setCurvePoint.MakeGenericMethod(syncCurveType).Invoke(null, [elem, array.GetElement(i)]);
-                            }
-                            else
-                            {
-                                if (arrayType == typeof(TubePoint))
-                                {
-                                    SetTubePoint((ValueGradientDriver<float3>.Point)elem!, (TubePoint)array.GetElement(i));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         private static Component GetOrAttachComponent(Slot targetSlot, Type type, out bool attachedNew)
@@ -562,8 +570,29 @@ namespace ArrayEditing
             return comp;
         }
 
-        private static bool SupportsLerp(Type type)
+        private static void SetCurvePoint<T>(ValueGradientDriver<T>.Point point, CurveKey<T> arrayElem) where T : IEquatable<T>
         {
+            point.Position.Value = arrayElem.time;
+            point.Value.Value = arrayElem.value;
+        }
+
+        private static void SetLinearPoint<T>(ValueGradientDriver<T>.Point point, LinearKey<T> arrayElem) where T : IEquatable<T>
+        {
+            point.Position.Value = arrayElem.time;
+            point.Value.Value = arrayElem.value;
+        }
+
+        private static void SetTubePoint(ValueGradientDriver<float3>.Point point, TubePoint arrayElem)
+        {
+            point.Position.Value = arrayElem.radius;
+            point.Value.Value = arrayElem.position;
+        }
+
+        private static bool SupportsLerp([NotNullWhen(true)] Type? type)
+        {
+            if (type is null)
+                return false;
+
             var coderType = typeof(Coder<>).MakeGenericType(type);
             return Traverse.Create(coderType).Property<bool>(nameof(Coder<float>.SupportsLerp)).Value;
         }
@@ -572,7 +601,7 @@ namespace ArrayEditing
         {
             genericParameters = null;
 
-            if (concreteType is null || baseType is null || !baseType.IsGenericType)
+            if (concreteType?.BaseType is null || baseType is null || !baseType.IsGenericType)
                 return false;
 
             if (concreteType.IsGenericType && concreteType.GetGenericTypeDefinition() == baseType)
