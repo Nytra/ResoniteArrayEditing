@@ -1,16 +1,16 @@
 ﻿using Elements.Core;
-using FrooxEngine.UIX;
+using EnumerableToolkit;
 using FrooxEngine;
+using FrooxEngine.UIX;
 using HarmonyLib;
 using MonkeyLoader.Patching;
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using EnumerableToolkit;
 using MonkeyLoader.Resonite;
 using MonkeyLoader.Resonite.UI.Inspectors;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Reflection;
 
 namespace ArrayEditing
 {
@@ -403,6 +403,23 @@ namespace ArrayEditing
                 SyncMemberEditorBuilder.BuildList(list, name, listField, ui);
                 var listSlot = ui.Current;
                 listSlot.DestroyWhenLocalUserLeaves();
+
+                ClearRefs(listSlot);
+                list.Changed += (IChangeable change) => 
+                { 
+                    ClearRefs(listSlot);
+                };
+                void ClearRefs(Slot listSlot)
+                {
+                    listSlot.FilterWorldElement()?.World.RunInUpdates(3, () => 
+                    {
+                        if (listSlot.FilterWorldElement() is null) return;
+                        foreach (var refProxySource in listSlot.GetComponentsInChildren<ReferenceProxySource>())
+                        {
+                            refProxySource.Reference.Target = null;
+                        }
+                    });
+                }
                 void ArrayDriveCheck(IChangeable changeable)
                 {
                     if (((ISyncArray)changeable).IsDriven)
