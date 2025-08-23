@@ -411,10 +411,9 @@ namespace ArrayEditing
                 };
                 void ClearRefs(Slot listSlot)
                 {
-                    if (listSlot == null || listSlot.IsRemoved) return;
-                    listSlot.World.RunInUpdates(3, () => 
+                    listSlot.FilterWorldElement()?.World.RunInUpdates(3, () => 
                     {
-                        if (listSlot == null || listSlot.IsRemoved) return;
+                        if (listSlot.FilterWorldElement() is null) return;
                         foreach (var refProxySource in listSlot.GetComponentsInChildren<ReferenceProxySource>())
                         {
                             refProxySource.Reference.Target = null;
